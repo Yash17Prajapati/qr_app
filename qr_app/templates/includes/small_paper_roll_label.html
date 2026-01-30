@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>{{ label_title or "Small Paper Roll Label" }}</title>
+	<style>
+		@page {
+			size: 50mm 30mm;
+			margin: 0;
+		}
+
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			width: 50mm;
+			height: 30mm;
+			background: #fff;
+		}
+
+		.container {
+			position: absolute;
+			top: 1mm;
+			left: 1mm;
+			width: 48mm;
+			height: 28mm;
+			border: 0.5mm solid #111;
+			border-radius: 0.8mm;
+			box-sizing: border-box;
+			padding: 2mm;
+			display: flex;
+			gap: 2.5mm;
+		}
+
+		.qr {
+			width: 18mm;
+			height: 18mm;
+			flex-shrink: 0;
+		}
+
+		.qr img {
+			width: 18mm;
+			height: 18mm;
+			display: block;
+		}
+
+		.details {
+			flex: 1;
+			font-size: 3mm;
+			line-height: 1.2;
+			display: flex;
+			flex-direction: column;
+			justify-content: flex-start;
+		}
+
+		.details strong {
+			font-size: 4mm;
+			margin-bottom: 0.8mm;
+		}
+
+		.details div {
+			white-space: nowrap;
+		}
+
+		.footer {
+			margin-top: auto;
+			padding-top: 0.6mm;
+			border-top: 0.2mm solid #111;
+			font-size: 2.7mm;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="qr">
+			<img src="data:image/png;base64,{{ qr_image }}" alt="QR Code">
+		</div>
+
+		<div class="details">
+			<strong>{{ sequence }}</strong>
+			<div>ID: {{ doc.name }}</div>
+			{% if doc.batch_no %}<div>Batch: {{ doc.batch_no }}</div>{% endif %}
+			{% if doc.manufacture_date %}<div>MFG: {{ doc.manufacture_date }}</div>{% endif %}
+			{% if display.width %}<div>Width: {{ display.width }} mm</div>{% endif %}
+			{% if display.length %}<div>Length: {{ display.length }} m</div>{% endif %}
+			{% if display.gsm %}<div>GSM: {{ display.gsm }}</div>{% endif %}
+			{% if doc.parent_jumbo_roll %}<div>Parent: {{ doc.parent_jumbo_roll }}</div>{% endif %}
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,115 @@
+{
+ "actions": [],
+ "autoname": "autoincrement",
+ "creation": "2025-12-19 12:09:52.536902",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sales_order",
+  "job_date",
+  "job_gsm",
+  "amended_from",
+  "slitted_roll_item",
+  "jumbo_paper_roll",
+  "job_status",
+  "is_system_created"
+ ],
+ "fields": [
+  {
+   "depends_on": "eval:doc.sales_order",
+   "fieldname": "jumbo_paper_roll",
+   "fieldtype": "Link",
+   "label": "Jumbo Paper Roll",
+   "options": "Jumbo Paper Roll"
+  },
+  {
+   "fieldname": "job_date",
+   "fieldtype": "Date",
+   "label": "Job Date"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Slitting Job",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "slitted_roll_item",
+   "fieldtype": "Table",
+   "label": "Slitted Roll Item",
+   "options": "Slitted Roll Item"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "job_gsm",
+   "fieldtype": "Int",
+   "label": "Job GSM"
+  },
+  {
+   "default": "In Progress",
+   "fieldname": "job_status",
+   "fieldtype": "Select",
+   "label": "Job Status",
+   "options": "\nIn Progress\nJumbo Finished\nCompleted"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_system_created",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "is system created",
+   "permlevel": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-30 14:35:18.983482",
+ "modified_by": "Administrator",
+ "module": "Qr App",
+ "name": "Slitting Job",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Green",
+   "title": "In Progress"
+  },
+  {
+   "color": "Purple",
+   "title": "Jumbo Finished"
+  },
+  {
+   "color": "Gray",
+   "title": "Completed"
+  }
+ ]
+}

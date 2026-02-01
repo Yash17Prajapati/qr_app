@@ -12,20 +12,25 @@
   "slitted_roll_item",
   "jumbo_paper_roll",
   "job_status",
-  "is_system_created"
+  "is_system_created",
+  "previous_jobs_html"
  ],
  "fields": [
   {
    "depends_on": "eval:doc.sales_order",
    "fieldname": "jumbo_paper_roll",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Jumbo Paper Roll",
-   "options": "Jumbo Paper Roll"
+   "options": "Jumbo Paper Roll",
+   "reqd": 1
   },
   {
    "fieldname": "job_date",
    "fieldtype": "Date",
-   "label": "Job Date"
+   "in_list_view": 1,
+   "label": "Job Date",
+   "reqd": 1
   },
   {
    "fieldname": "amended_from",
@@ -68,14 +73,19 @@
    "hidden": 1,
    "label": "is system created",
    "permlevel": 1
+  },
+  {
+   "fieldname": "previous_jobs_html",
+   "fieldtype": "HTML",
+   "label": "Previous Slitting Jobs"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-30 14:35:18.983482",
- "modified_by": "Administrator",
+ "modified": "2026-02-02 00:44:25.388196",
+ "modified_by": "yash1771.prajapati@gmail.com",
  "module": "Qr App",
  "name": "Slitting Job",
  "naming_rule": "Autoincrement",

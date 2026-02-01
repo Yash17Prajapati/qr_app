@@ -37,6 +37,34 @@ function load_remaining_items(frm) {
     });
 }
 
+function load_slitted_items(frm) {
+    if (!frm.doc.sales_order || !frm.doc.job_gsm) return;
+
+    frappe.call({
+        method: "qr_app.qr_app.doctype.slitting_job.slitting_job.get_slitted_items_with_remaining",
+        args: {
+            sales_order: frm.doc.sales_order,
+            gsm: frm.doc.job_gsm
+        },
+        callback(r) {
+            if (!r.message) return;
+
+            frm.clear_table("slitted_roll_item");
+
+            r.message.forEach(row => {
+                let child = frm.add_child("slitted_roll_item");
+                child.width = row.width;
+                child.length = row.length;
+                child.gsm = row.gsm;
+                child.qty = row.qty;
+                child.remaining_qty = row.remaining_qty;
+                child.produced_quantity = 0; // THIS JOB ONLY
+            });
+
+            frm.refresh_field("slitted_roll_item");
+        }
+    });
+}
 
 frappe.ui.form.on("Slitting Job", {
     // refresh(frm) {
@@ -79,6 +107,59 @@ frappe.ui.form.on("Slitting Job", {
     // },
     refresh(frm){
         // load_remaining_items(frm);
+        // Hide by default
+        frm.toggle_display("previous_jobs_html", false);
+
+        if (!frm.doc.sales_order || !frm.doc.job_gsm) return;
+
+        frappe.call({
+            method: "qr_app.qr_app.doctype.slitting_job.slitting_job.get_previous_slitting_jobs",
+            args: {
+                sales_order: frm.doc.sales_order,
+                gsm: frm.doc.job_gsm,
+                current_job: frm.doc.name
+            },
+            callback(r) {
+                if (!r.message || r.message.length === 0) {
+                    // No previous jobs → keep hidden
+                    return;
+                }
+
+                // Build HTML table
+                let html = `
+                    <h5>Previous Slitting Jobs</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Job</th>
+                                <th>Date</th>
+                                <th>Width (mm)</th>
+                                <th>Length (m)</th>
+                                <th>Produced Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                r.message.forEach(row => {
+                    html += `
+                        <tr>
+                            <td>${row.slitting_job}</td>
+                            <td>${row.job_date || ""}</td>
+                            <td>${row.width}</td>
+                            <td>${row.length}</td>
+                            <td>${row.produced_quantity}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table>`;
+
+                // Show + populate
+                frm.set_df_property("previous_jobs_html", "options", html);
+                frm.toggle_display("previous_jobs_html", true);
+            }
+        });
     },
     setup(frm) {
         frm.set_query("sales_order", function () {
@@ -137,22 +218,24 @@ frappe.ui.form.on("Slitting Job", {
         });
     },
     job_gsm(frm) {
-        if (!frm.doc.sales_order || !frm.doc.job_gsm) return;
+        // if (!frm.doc.sales_order || !frm.doc.job_gsm) return;
 
-        frm.clear_table("slitted_roll_item");
+        // frm.clear_table("slitted_roll_item");
 
-        frappe.db.get_doc("Sales Order", frm.doc.sales_order).then(so => {
-            (so.items || []).forEach(item => {
-                if (item.gsm == frm.doc.job_gsm) {
-                    let row = frm.add_child("slitted_roll_item");
-                    row.gsm = item.gsm;
-                    row.width = item.widthmm;
-                    row.length = item.lengthm;
-                    row.qty = item.qty;
-                }
-            });
+        // frappe.db.get_doc("Sales Order", frm.doc.sales_order).then(so => {
+        //     (so.items || []).forEach(item => {
+        //         if (item.gsm == frm.doc.job_gsm) {
+        //             let row = frm.add_child("slitted_roll_item");
+        //             row.gsm = item.gsm;
+        //             row.width = item.widthmm;
+        //             row.length = item.lengthm;
+        //             row.qty = item.qty;
+        //             row.remaining_qty=row.qty;
+        //         }
+        //     });
 
-            frm.refresh_field("slitted_roll_item");
-        });
+        //     frm.refresh_field("slitted_roll_item");
+        // });
+        load_slitted_items(frm);
     }
 });

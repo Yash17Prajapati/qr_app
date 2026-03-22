@@ -76,15 +76,17 @@
 		</div>
 
 		<div class="details">
-			<strong>{{ sequence }}</strong>
-			<div>ID: {{ doc.name }}</div>
+			<div>ID: {{ doc.id }}</div>
+			<!-- <div>ID: {{ doc.id }}</div> -->
 			{% if doc.batch_no %}<div>Batch: {{ doc.batch_no }}</div>{% endif %}
-			{% if doc.manufacture_date %}<div>MFG: {{ doc.manufacture_date }}</div>{% endif %}
+			{% if display.manufacture_date %}<div>MFG: {{ display.manufacture_date }}</div>{% endif %}
 			{% if display.width %}<div>Width: {{ display.width }} mm</div>{% endif %}
 			{% if display.length %}<div>Length: {{ display.length }} m</div>{% endif %}
 			{% if display.gsm %}<div>GSM: {{ display.gsm }}</div>{% endif %}
-			{% if doc.parent_jumbo_roll %}<div>Parent: {{ doc.parent_jumbo_roll }}</div>{% endif %}
+			{% if doc.jumbo_paper_roll %}<div>Parent: {{ doc.jumbo_paper_roll }}</div>{% endif %}
+			{% if display.weight %}<div>Weight: {{ display.weight}} kg</div>{% endif %}
 		</div>
 	</div>
 </body>
 </html>
+<!-- <strong>{{ sequence }}</strong> -->

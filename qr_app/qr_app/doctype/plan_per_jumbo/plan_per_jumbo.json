@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-18 07:13:58.537539",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "plan_per_day",
+  "column_break_rkpq",
+  "select_jumbo",
+  "section_break_dsjs",
+  "roll_allocation",
+  "section_break_ynol",
+  "sales_order_mapping"
+ ],
+ "fields": [
+  {
+   "fieldname": "plan_per_day",
+   "fieldtype": "Link",
+   "label": "Plan Per Day",
+   "options": "Plan Per Day"
+  },
+  {
+   "fieldname": "column_break_rkpq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "select_jumbo",
+   "fieldtype": "Link",
+   "label": "Select Jumbo",
+   "options": "Jumbo"
+  },
+  {
+   "fieldname": "section_break_dsjs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "roll_allocation",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Roll Allocation",
+   "options": "Roll Allocation"
+  },
+  {
+   "fieldname": "section_break_ynol",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "sales_order_mapping",
+   "fieldtype": "Table",
+   "label": "Sales Order Mapping",
+   "options": "Sales Order Mapping"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-20 09:27:42.233328",
+ "modified_by": "Administrator",
+ "module": "Qr App",
+ "name": "Plan Per Jumbo",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

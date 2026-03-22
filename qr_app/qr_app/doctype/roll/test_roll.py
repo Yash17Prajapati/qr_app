@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestSmallPaperRoll(FrappeTestCase):
+class TestRoll(FrappeTestCase):
 	pass

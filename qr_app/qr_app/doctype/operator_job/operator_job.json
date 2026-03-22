@@ -1,0 +1,69 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-19 11:52:41.602094",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "plan_per_day",
+  "section_break_dbcc",
+  "production_item",
+  "section_break_tvlp",
+  "rolls_manufactured"
+ ],
+ "fields": [
+  {
+   "fieldname": "plan_per_day",
+   "fieldtype": "Link",
+   "label": "Plan Per Day",
+   "options": "Plan Per Day"
+  },
+  {
+   "fieldname": "section_break_dbcc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "production_item",
+   "fieldtype": "Table",
+   "label": "Production Item",
+   "options": "To be Produced"
+  },
+  {
+   "fieldname": "section_break_tvlp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "rolls_manufactured",
+   "fieldtype": "Table",
+   "label": "Rolls Manufactured",
+   "options": "Manufactured Items"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-19 12:09:38.571842",
+ "modified_by": "Administrator",
+ "module": "Qr App",
+ "name": "Operator Job",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

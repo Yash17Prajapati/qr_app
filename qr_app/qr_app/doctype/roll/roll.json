@@ -7,11 +7,15 @@
  "field_order": [
   "width_mm",
   "length_m",
+  "lengthm",
   "parent_jumbo_roll",
+  "sales_order",
   "column_break_wmkw",
   "gsm",
   "weight_kg",
-  "slitting_job"
+  "slitting_job",
+  "plan_per_jumbo",
+  "weight"
  ],
  "fields": [
   {
@@ -20,6 +24,7 @@
    "label": "Width (mm)"
   },
   {
+   "description": "(Expected)",
    "fieldname": "length_m",
    "fieldtype": "Float",
    "label": "Length (m)"
@@ -38,7 +43,7 @@
    "fieldname": "parent_jumbo_roll",
    "fieldtype": "Link",
    "label": "Parent Jumbo Roll",
-   "options": "Jumbo Paper Roll"
+   "options": "Jumbo"
   },
   {
    "fieldname": "column_break_wmkw",
@@ -49,15 +54,38 @@
    "fieldtype": "Link",
    "label": "Slitting Job",
    "options": "Slitting Job"
+  },
+  {
+   "description": "(Actual)",
+   "fieldname": "lengthm",
+   "fieldtype": "Float",
+   "label": "Length(m)"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "plan_per_jumbo",
+   "fieldtype": "Link",
+   "label": "Plan Per Jumbo",
+   "options": "Plan Per Jumbo"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Float",
+   "label": "Weight"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-19 12:35:00.737657",
+ "modified": "2026-03-18 12:29:55.792053",
  "modified_by": "Administrator",
  "module": "Qr App",
- "name": "Small Paper Roll",
+ "name": "Roll",
  "naming_rule": "Autoincrement",
  "owner": "Administrator",
  "permissions": [

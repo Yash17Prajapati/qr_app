@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-05 11:10:33.927100",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "id",
+  "gsm",
+  "widthmm",
+  "lengthm",
+  "gross_weight",
+  "net_weight",
+  "jumbo_paper_roll",
+  "sales_order",
+  "customer",
+  "bamboo_weight",
+  "qr_printed",
+  "print_qr"
+ ],
+ "fields": [
+  {
+   "fieldname": "gsm",
+   "fieldtype": "Data",
+   "label": "GSM"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "widthmm",
+   "fieldtype": "Int",
+   "label": "Width(mm)"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "lengthm",
+   "fieldtype": "Float",
+   "label": "Length(m)"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "gross_weight",
+   "fieldtype": "Float",
+   "label": "Gross Weight"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "net_weight",
+   "fieldtype": "Float",
+   "label": "Net Weight"
+  },
+  {
+   "fieldname": "print_qr",
+   "fieldtype": "Button",
+   "label": "Print QR"
+  },
+  {
+   "fieldname": "jumbo_paper_roll",
+   "fieldtype": "Data",
+   "label": "Jumbo Paper Roll"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Data",
+   "label": "Sales Order"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "Customer"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "bamboo_weight",
+   "fieldtype": "Float",
+   "label": "Bamboo Weight"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "qr_printed",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "QR Printed"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-09 16:50:33.228414",
+ "modified_by": "Administrator",
+ "module": "Qr App",
+ "name": "Manufactured Items",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

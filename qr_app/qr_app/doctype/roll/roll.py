@@ -10,7 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import formatdate
 
 
-class SmallPaperRoll(Document):
+class Roll(Document):
 	pass
 
 
@@ -47,7 +47,7 @@ def get_qr_print_html(name: str) -> str:
 		parts.append(f"{display['length']} m")
 	net_text = " | ".join(parts)
 	return frappe.render_template(
-		"qr_app/templates/includes/small_paper_roll_label.html",
+		"qr_app/templates/includes/roll_label.html",
 		{
 			"doc": doc,
 			"display": display,

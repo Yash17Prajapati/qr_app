@@ -1,7 +1,7 @@
 // Copyright (c) 2025, surani and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Small Paper Roll", {
+frappe.ui.form.on("Roll", {
 	refresh(frm) {
 		if (!frm.is_new()) {
 			frm.page.set_secondary_action(__("Print"), () => {

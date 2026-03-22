@@ -3,91 +3,144 @@
 
 import frappe
 from frappe.model.document import Document
-
+import base64
+from io import BytesIO
+import qrcode
+from frappe.utils import formatdate
 
 class SlittingJob(Document):
-    def validate(self):
-        if self.docstatus == 1:  # submit
-            if self.job_status == "In Progress":
-                frappe.throw(
-                    "You cannot submit the Slitting Job while it is In Progress. "
-                    "Set status to Jumbo Finished or Completed before submitting."
-                )
 
-            total_produced = 0
+    def sync_serial_numbers(self):
+        """Keep Serial No fields synced with rolls_manufactured table"""
 
-            for row in self.slitted_roll_item:
-                if row.produced_quantity is None or row.produced_quantity < 0:
-                    frappe.throw(
-                        f"Produced Quantity cannot be negative (Row {row.idx})"
-                    )
+        for roll in self.rolls_manufactured:
 
-                if row.produced_quantity > row.qty:
-                    frappe.throw(
-                        f"Produced Quantity cannot be greater than Planned Quantity (Row {row.idx})"
-                    )
+            if not roll.id:
+                continue
 
-                total_produced += row.produced_quantity or 0
+            serial = frappe.get_doc("Serial No", roll.id)
 
-            if total_produced == 0:
-                frappe.throw(
-                    "You cannot submit the job with zero production. "
-                    "At least one Small Paper Roll must be produced."
-                )
-        if not self.sales_order or not self.job_gsm:
+            if (
+                serial.gsm != roll.gsm
+                or serial.widthmm != roll.widthmm
+                or serial.lengthm != roll.lengthm
+            ):
+                serial.gsm = roll.gsm
+                serial.widthmm = roll.widthmm
+                serial.lengthm = roll.lengthm
+                serial.save(ignore_permissions=True)
+
+
+    def create_stock_entry(self,new_rolls=None):
+        """Create stock entry from produced rolls"""
+
+        if not new_rolls:
             return
-        valid_gsms=get_pending_gsm_list(self.sales_order)
-        if self.job_gsm not in valid_gsms:
-            frappe.throw(
-                f'GSM {self.job_gsm} is not pending for this sales order.'
-                f'Valid GSMs are: {", ".join(map(str,valid_gsms))}'
-            )
-        for row in self.slitted_roll_item:
-            if row.produced_quantity > row.remaining_qty:
-                frappe.throw(
-                f"Produced Qty cannot exceed Remaining Qty "
-                f"(Available: {row.remaining_qty}) for Width {row.width} mm"
-            )
-    def on_submit(self):
-        # frappe.throw("On Submit is Running")
-        for row in self.slitted_roll_item:
-            qty = row.produced_quantity or 0
-            # frappe.msgprint(f'Producing Row {row} with row.produced_quantity {row.produced_quantity} and qty {row.qty}')
-            for _ in range(int(qty)):
-                roll = frappe.new_doc("Serial No")
-                roll.item_code='SPR'
-                roll.serial_no='SPR-'+frappe.generate_hash(length=8)
-                # roll.warehouse='Finished Goods - ED'
-                roll.slitting_job = self.name
-                roll.parent_jumbo_roll = self.jumbo_paper_roll
-                roll.gsm = row.gsm
-                roll.widthmm = row.width
-                roll.lengthm = row.length
-                roll.insert(ignore_permissions=True)
 
-        if self.job_status == "Jumbo Finished":
-            frappe.db.set_value(
-                "Jumbo Paper Roll",
-                self.jumbo_paper_roll,
-                "status",
-                "Finished"
-            )
+        se = frappe.new_doc("Stock Entry")
+        se.stock_entry_type = "Material Receipt"
+        se.company = "Eximius (Demo)"
+        se.slitting_job = self.name
+
+        for roll in new_rolls:
+
+            se.append("items", {
+                "item_code": "SPR",
+                "qty": 1,
+                "serial_no": roll.id,
+                "t_warehouse": "Finished Goods - ED",
+                "gsm": roll.gsm,
+                "widthmm": roll.widthmm,
+                "lengthm": roll.lengthm,
+                "gross_weightkg": roll.gross_weight,
+                "net_weightkg": roll.net_weight,
+                "sales_order": roll.sales_order
+            })
+
+        se.insert(ignore_permissions=True)
+        se.submit()
+
+
+    def rebuild_stock_entry(self):
+        """Recreate stock entry when rolls change"""
+
+        entries = frappe.get_all(
+        "Stock Entry",
+        filters={"slitting_job": self.name},
+        pluck="name"
+        )
+
+        for se_name in entries:
+
+            se_doc = frappe.get_doc("Stock Entry", se_name)
+
+            if se_doc.docstatus == 1:
+                se_doc.cancel()
+
+            frappe.delete_doc("Stock Entry", se_name, force=True)
+
+            # rebuild with updated rolls
+        self.create_stock_entry(self.rolls_manufactured)
+
+    def on_update_after_submit(self):
+        """If rolls change after submit"""
+        if self.flags.ignore_validate_update_after_submit:
+            return
+        self.sync_serial_numbers()
+        self.rebuild_stock_entry()
+
+@frappe.whitelist()
+def get_customers_with_open_sales_orders(doctype, txt, searchfield, start, page_len, filters):
+
+    return frappe.db.sql("""
+SELECT DISTINCT so.customer
+FROM `tabSales Order` so
+WHERE
+so.docstatus = 1
+AND so.status IN ('To Deliver', 'To Deliver and Bill')
+AND so.customer LIKE %(txt)s
+AND EXISTS (
+    SELECT 1
+    FROM `tabSales Order Item` soi
+    WHERE soi.parent = so.name
+    AND soi.qty >
+    (
+        SELECT COUNT(rm.name)
+        FROM `tabSlitting Job` sj
+        JOIN `tabManufactured Items` rm ON rm.parent = sj.name
+        WHERE
+        sj.sales_order = so.name
+        AND rm.gsm = soi.gsm
+        AND rm.widthmm = soi.widthmm
+        AND rm.lengthm = soi.lengthm
+    )
+)
+LIMIT %(start)s, %(page_len)s
+""", {
+    "txt": f"%{txt}%",
+    "start": start,
+    "page_len": page_len
+})
+
+
 @frappe.whitelist()
 def get_pending_gsm_list(sales_order):
+
     so = frappe.get_doc("Sales Order", sales_order)
     pending_gsms = set()
 
     for item in so.items:
+
         produced = frappe.db.sql("""
-            SELECT COALESCE(SUM(sri.produced_quantity), 0)
-            FROM `tabSlitting Job` sj
-            JOIN `tabSlitted Roll Item` sri ON sri.parent = sj.name
-            WHERE
-                sj.sales_order = %s
-                AND sj.docstatus = 1
-                AND sri.gsm = %s
-                AND sri.width = %s
-                AND sri.length = %s
+        SELECT COUNT(rm.name)
+        FROM `tabSlitting Job` sj
+        JOIN `tabManufactured Items` rm ON rm.parent = sj.name
+        WHERE
+        sj.sales_order = %s
+        AND sj.docstatus < 2
+        AND rm.gsm = %s
+        AND rm.widthmm = %s
+        AND rm.lengthm = %s
         """, (
             so.name,
             item.gsm,
@@ -99,94 +152,249 @@ def get_pending_gsm_list(sales_order):
             pending_gsms.add(item.gsm)
 
     return sorted(pending_gsms)
+
+
 @frappe.whitelist()
-def get_remaining_items_for_gsm(sales_order, gsm):
+def get_open_sales_orders(doctype, txt, searchfield, start, page_len, filters):
+
+    customer = filters.get("customer")
+
+    return frappe.db.sql("""
+SELECT DISTINCT so.name
+FROM `tabSales Order` so
+JOIN `tabSales Order Item` soi ON soi.parent = so.name
+
+LEFT JOIN (
+    SELECT
+    sales_order,
+    gsm,
+    widthmm,
+    lengthm,
+    COUNT(name) AS produced_qty
+    FROM `tabSerial No`
+    WHERE sales_order IS NOT NULL
+    GROUP BY sales_order, gsm, widthmm, lengthm
+) prod
+ON prod.sales_order = so.name
+AND prod.gsm = soi.gsm
+AND prod.widthmm = soi.widthmm
+AND prod.lengthm = soi.lengthm
+
+WHERE
+so.docstatus = 1
+AND so.customer = %(customer)s
+AND so.name LIKE %(txt)s
+AND COALESCE(prod.produced_qty,0) < soi.qty
+
+AND NOT EXISTS (
+    SELECT 1
+    FROM `tabSlitting Job` sj
+    WHERE sj.sales_order = so.name
+    AND sj.workflow_state = 'In Progress'
+)
+
+LIMIT %(start)s, %(page_len)s
+""", {
+    "txt": f"%{txt}%",
+    "start": start,
+    "page_len": page_len,
+    "customer": customer
+})
+
+# @frappe.whitelist()
+# def produce_roll(slitting_job, widthmm, lengthm, gsm, qty, weights, serials=None):
+#     new_rolls = []
+#     doc = frappe.get_doc("Slitting Job", slitting_job)
+
+#     weights = frappe.parse_json(weights)
+
+#     if serials:
+#         serials = frappe.parse_json(serials)
+
+#     for i in range(int(qty)):
+
+#         weight = weights[i] if i < len(weights) else 0
+
+#             # choose serial number
+#         if serials and i < len(serials):
+#             serial_no = serials[i]
+#         else:
+#             serial_no = "SPR-" + frappe.generate_hash(length=8)
+
+#                 # ALWAYS create serial document
+#         serial_doc = frappe.new_doc("Serial No")
+#         serial_doc.item_code = "SPR"
+#         serial_doc.serial_no = serial_no
+#         serial_doc.slitting_job = doc.name
+#         serial_doc.parent_jumbo_roll = doc.jumbo_paper_roll
+#         serial_doc.widthmm = widthmm
+#         serial_doc.lengthm = lengthm
+#         serial_doc.gsm = gsm
+#         serial_doc.gross_weightkg = weight
+#         serial_doc.sales_order = doc.sales_order
+
+#         serial_doc.insert(ignore_permissions=True)
+
+#                 # ALWAYS append to table
+#         row=doc.append("rolls_manufactured", {
+#                     "id": serial_no,
+#                     "gsm": gsm,
+#                     "widthmm": widthmm,
+#                     "lengthm": lengthm,
+#                     "gross_weight": weight,
+#                     "sales_order": doc.sales_order
+#                 })
+#         new_rolls.append(row)
+#     # Recalculate remaining quantity
+#     for row in doc.slitted_roll_item:
+
+#         produced = frappe.db.count(
+#         "Serial No",
+#         filters={
+#             "sales_order": doc.sales_order,
+#             "gsm": row.gsm,
+#             "widthmm": row.width,
+#             "lengthm": row.length
+#         }
+#     )
+
+#         row.remaining_qty = max(row.qty - produced, 0)
+#     doc.flags.ignore_validate_update_after_submit = True
+
+#     doc.save(ignore_permissions=True)
+#     doc.create_stock_entry(new_rolls)
+#     frappe.db.commit()
+
+@frappe.whitelist()
+def produce_roll(slitting_job, jumbo_roll_id, gsm, rolls, serials=None):
+
+    new_rolls = []
+    doc = frappe.get_doc("Slitting Job", slitting_job)
+
+    rolls = frappe.parse_json(rolls)
+
+    if serials:
+        serials = frappe.parse_json(serials)
+
+    for i, roll in enumerate(rolls):
+
+        widthmm = roll.get("width")
+        lengthm = roll.get("length")
+        weight = roll.get("weight")
+
+            # choose serial number
+        if serials and i < len(serials):
+            serial_no = serials[i]
+        else:
+            serial_no = "SPR-" + frappe.generate_hash(length=3)
+
+                # create serial document
+        serial_doc = frappe.new_doc("Serial No")
+        serial_doc.item_code = "SPR"
+        serial_doc.serial_no = serial_no
+        serial_doc.slitting_job = doc.name
+        serial_doc.parent_jumbo_roll = jumbo_roll_id
+        serial_doc.widthmm = widthmm
+        serial_doc.lengthm = lengthm
+        serial_doc.gsm = gsm
+        serial_doc.gross_weightkg = weight
+        serial_doc.sales_order = doc.sales_order
+
+        serial_doc.insert(ignore_permissions=True)
+
+                # append to table
+        row = doc.append("rolls_manufactured", {
+                    "id": serial_no,
+                    "gsm": gsm,
+                    "widthmm": widthmm,
+                    "lengthm": lengthm,
+                    "gross_weight": weight,
+                    "sales_order": doc.sales_order,
+                    "jumbo_paper_roll": jumbo_roll_id
+                })
+
+        new_rolls.append(row)
+
+                # Recalculate remaining quantity
+    for row in doc.slitted_roll_item:
+
+        produced = frappe.db.count(
+            "Serial No",
+            filters={
+            "sales_order": doc.sales_order,
+            "gsm": row.gsm,
+            "widthmm": row.width,
+            "lengthm": row.length
+                    }
+        )
+
+        row.remaining_qty = max(row.qty - produced, 0)
+
+    doc.flags.ignore_validate_update_after_submit = True
+
+    doc.save(ignore_permissions=True)
+
+    doc.create_stock_entry(new_rolls)
+
+    frappe.db.commit()
+
+@frappe.whitelist()
+def get_available_rolls(slitting_job):
+    """Return produced rolls for bundle creation"""
+
+    doc = frappe.get_doc("Slitting Job", slitting_job)
+
+    return [r.id for r in doc.rolls_manufactured]
+
+@frappe.whitelist()
+def create_bundle(slitting_job, rolls):
+    """Create roll bundle"""
+
+    rolls = frappe.parse_json(rolls)
+
+    bundle = frappe.new_doc("Roll Bundle")
+    bundle.slitting_job = slitting_job
+
+    for r in rolls:
+        bundle.append("bundle_items", {"roll_id": r})
+
+    bundle.insert(ignore_permissions=True)
+
+    return bundle.name
+
+@frappe.whitelist()
+def get_slitted_items(sales_order):
+
     so = frappe.get_doc("Sales Order", sales_order)
-    remaining_rows = []
+
+    rows = []
 
     for item in so.items:
-        if item.gsm != gsm:
-            continue
 
-        produced = frappe.db.sql("""
-            SELECT COALESCE(SUM(sri.produced_quantity), 0)
-            FROM `tabSlitting Job` sj
-            JOIN `tabSlitted Roll Item` sri ON sri.parent = sj.name
-            WHERE
-                sj.sales_order = %s
-                AND sj.docstatus = 1
-                AND sri.gsm = %s
-                AND sri.width = %s
-                AND sri.length = %s
-        """, (
-            so.name,
-            item.gsm,
-            item.widthmm,
-            item.lengthm
-        ))[0][0]
-
-        remaining_qty = item.qty - produced
-
-        # 🔒 ONLY remaining demand survives
-        if remaining_qty > 0:
-            remaining_rows.append({
+        produced = frappe.db.count(
+            "Serial No",
+            filters={
+                "sales_order": so.name,
                 "gsm": item.gsm,
-                "width": item.widthmm,
-                "length": item.lengthm,
-                "qty": remaining_qty
-            })
-
-    return remaining_rows
-
-@frappe.whitelist()
-def get_slitted_items_with_remaining(sales_order, gsm):
-
-    result = []
-
-    # 1️⃣ Source of truth: Sales Order Slitting Items
-    so_items = frappe.db.sql("""
-        SELECT
-            widthmm,
-            lengthm,
-            gsm,
-            qty
-        FROM `tabSales Order Item`
-        WHERE parent = %s
-          AND gsm = %s
-    """, (sales_order, gsm), as_dict=True)
-
-    for item in so_items:
-
-        # 2️⃣ Total produced so far
-        produced = frappe.db.sql("""
-            SELECT IFNULL(SUM(sri.produced_quantity), 0) AS produced_quantity
-            FROM `tabSlitting Job` sj
-            JOIN `tabSlitted Roll Item` sri ON sri.parent = sj.name
-            WHERE sj.sales_order = %s
-              AND sj.docstatus = 1
-              AND sri.gsm = %s
-              AND sri.width = %s
-              AND sri.length = %s
-        """, (
-            sales_order,
-            item.gsm,
-            item.widthmm,
-            item.lengthm
-        ), as_dict=True)
-
-        total_produced = produced[0].produced_quantity or 0
-        remaining_qty = item.qty - total_produced
-
-        result.append({
-            "width": item.widthmm,
-            "length": item.lengthm,
+                "widthmm": item.widthmm,
+                "lengthm": item.lengthm
+            }
+        )
+        
+        remaining_qty = item.qty - produced
+        
+        if remaining_qty < 0:
+            remaining_qty = 0
+        rows.append({
             "gsm": item.gsm,
+            "widthmm": item.widthmm,
+            "lengthm": item.lengthm,
             "qty": item.qty,
-            "produced_quantity": total_produced,
-            "remaining_qty": max(remaining_qty, 0)
+            "remaining_qty": remaining_qty,
+            "delivery_date": item.delivery_date
         })
 
-    return result
+    return rows
 
 @frappe.whitelist()
 def get_previous_slitting_jobs(sales_order, gsm, current_job):
@@ -197,66 +405,101 @@ def get_previous_slitting_jobs(sales_order, gsm, current_job):
         "creation"
     )
 
-    return frappe.db.sql("""
-        SELECT
-            sj.name AS slitting_job,
-            sj.job_date,
-            sri.width,
-            sri.length,
-            sri.produced_quantity
-        FROM `tabSlitting Job` sj
-        JOIN `tabSlitted Roll Item` sri ON sri.parent = sj.name
-        WHERE sj.sales_order = %s
-          AND sj.job_gsm = %s
-          AND sj.docstatus = 1
-          AND sj.creation < %s
-          AND sri.produced_quantity > 0
-        ORDER BY sj.creation DESC
-    """, (sales_order, gsm, current_creation), as_dict=True)
+    jobs = frappe.get_all(
+        "Slitting Job",
+        filters={
+            "sales_order": sales_order,
+            "job_gsm": gsm,
+            "docstatus": 1,
+            "creation": ("<", current_creation)
+        },
+        fields=["name", "job_date"],
+        order_by="creation desc"
+    )
 
+    result = []
 
+    for job in jobs:
 
-# def validate(doc, method):
-# 	if not doc.slitted_roll_item:
-# 		frappe.throw("Slitting Job must have at least one slitted roll item.")
+        rolls = frappe.get_all(
+            "Manufactured Items",
+            filters={"parent": job.name},
+            fields=["widthmm", "lengthm"]
+        )
 
-# 	for idx, item in enumerate(doc.slitted_roll_item, start=1):
-# 		if not item.qty or item.qty <= 0:
-# 			frappe.throw(f"Row {idx}: Quantity must be greater than 0.")
+        for r in rolls:
+            result.append({
+                "slitting_job": job.name,
+                "job_date": job.job_date,
+                "width": r.widthmm,
+                "length": r.lengthm,
+                "produced_quantity": 1
+            })
 
-# 		if not item.width or item.width <= 0:
-# 			frappe.throw(f"Row {idx}: Width (mm) must be greater than 0.")
+    return result
 
-# 		if not item.length or item.length <= 0:
-# 			frappe.throw(f"Row {idx}: Length (m) must be greater than 0.")
+@frappe.whitelist()
+def get_qr_print_html(slitting_job: str, row_name: str) -> str:
 
-# 		if not item.gsm or item.gsm <= 0:
-# 			frappe.throw(f"Row {idx}: GSM must be greater than 0.")
-# 	if doc.docstatus==1:
-# 		if doc.job_status=='In Progress':
-# 			frappe.throw("You can not submit the slitting job while it is in Progress."
-# 				"Set status to jumbo finished or completed before submitting.")
+    doc = frappe.get_doc("Slitting Job", slitting_job)
 
+    roll = None
+    for r in doc.rolls_manufactured:
+        if r.name == row_name:
+            roll = r
+            break
 
-# def on_submit(doc, method):
-# 	existing = frappe.get_all(
-# 		"Small Paper Roll",
-# 		filters={"slitting_job": doc.name},
-# 		limit=1,
-# 	)
+    if not roll:
+        frappe.throw("Roll not found")
 
-# 	if existing:
-# 		frappe.throw("Small Paper Rolls already created for this Slitting Job.")
+    formatted_mfg = (
+        formatdate(doc.job_date, "dd-MM-yy")
+        if doc.get("job_date")
+        else None
+    )
 
-# 	for item in doc.slitted_roll_item:
-# 		for _ in range(item.qty):
-# 			roll = frappe.new_doc("Small Paper Roll")
-# 			roll.parent_jumbo_roll = doc.jumbo_paper_roll
-# 			roll.slitting_job = doc.name
-# 			roll.width_mm = item.width
-# 			roll.length_m = item.length
-# 			roll.gsm = item.gsm
-# 			roll.insert(ignore_permissions=True)
+    label_data = {
+        "roll_id": str(roll.id),
+        "slitting_job": slitting_job
+    }
 
+    qr_buffer = BytesIO()
+    qrcode.make(frappe.as_json(label_data)).save(qr_buffer, format="PNG")
+    qr_image = base64.b64encode(qr_buffer.getvalue()).decode()
 
+    display = {
+        "width": roll.get_formatted("widthmm") if roll.widthmm else None,
+        "length": roll.get_formatted("lengthm") if roll.lengthm else None,
+        "gsm": roll.get_formatted("gsm") if roll.gsm else None,
+        "weight": roll.get_formatted("gross_weight") if roll.gross_weight else None,
+        "manufacture_date": formatted_mfg,
+    }
 
+    parts = []
+
+    if roll.gross_weight:
+        weight_g = int(roll.gross_weight * 1000)
+        parts.append(f"{weight_g} g")
+
+    if display["gsm"]:
+        parts.append(f"{display['gsm']} GSM")
+
+    if display["width"]:
+        parts.append(f"{display['width']} mm")
+
+    if display["length"]:
+        parts.append(f"{display['length']} m")
+
+    net_text = " | ".join(parts)
+
+    return frappe.render_template(
+        "qr_app/templates/includes/small_paper_roll_label.html",
+        {
+            "doc": roll,
+            "display": display,
+            "qr_image": qr_image,
+            "net_text": net_text,
+            "sequence": roll.get("label_sequence") or roll.name,
+            "label_title": f"{roll.id}-label",
+        },
+    )

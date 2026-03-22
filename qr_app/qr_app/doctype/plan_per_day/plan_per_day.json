@@ -1,0 +1,91 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-03-18 06:56:46.186956",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date",
+  "plan_per_jumbo",
+  "column_break_peso",
+  "workstation",
+  "sales_order",
+  "get_items",
+  "section_break_llzn",
+  "planned_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "column_break_peso",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "workstation",
+   "fieldtype": "Link",
+   "label": "Workstation",
+   "options": "Workstation"
+  },
+  {
+   "fieldname": "plan_per_jumbo",
+   "fieldtype": "Link",
+   "label": "Plan Per Jumbo",
+   "options": "Plan Per Jumbo"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "section_break_llzn",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "planned_items",
+   "fieldtype": "Table",
+   "label": "Planned Items",
+   "options": "Planned Sales Order Item"
+  },
+  {
+   "depends_on": "eval: doc.sales_order",
+   "fieldname": "get_items",
+   "fieldtype": "Button",
+   "hidden": 1,
+   "label": "Get Items"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-03-20 09:34:12.660535",
+ "modified_by": "Administrator",
+ "module": "Qr App",
+ "name": "Plan Per Day",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
